@@ -22,9 +22,13 @@ def ArgParser():
     parser.add_argument("-g", "--gpu", action="store_true", default=False, help="enable CPU")
     parser.add_argument("-i", "--image", type=str, default="", help="image file")
     parser.add_argument("-p", "--prompt", type=str, default="", help="prompt")
-    parser.add_argument("-t", "--type", type=str, default="v1", help="prompt")
+    parser.add_argument("-t", "--type", type=str, default="v1", help="type")
     return parser.parse_args() 
 
+def cut_sentence(input):
+    input = input[:input.rfind('。')+1]
+    # print(input)
+    return input
 
 def main(args):
     if args.prompt != "":
@@ -103,7 +107,7 @@ def main(args):
     input_ids = input_ids[:, :-1] # </sep>がinputの最後に入るので削除する
     stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
     keywords = [stop_str]
-    streamer = TextStreamer(tokenizer, skip_prompt=True, timeout=20.0)
+    streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=20.0)
 
     # predict
     predict_time_start = time.perf_counter()
@@ -114,13 +118,13 @@ def main(args):
             do_sample=True,
             temperature=0.1,
             top_p=1.0,
-            max_new_tokens=128,
+            max_new_tokens=64,
             streamer=streamer,
             use_cache=False,
             pad_token_id=4,
             length_penalty=10.0,
             early_stopping=True,
-            # max_time=60,
+            max_time=60,
         )
     predict_time_end = time.perf_counter()
     predict_time = predict_time_end-predict_time_start
@@ -132,6 +136,10 @@ def main(args):
     idx = output.find(target)
     input_text = output[:idx]
     output_text = output[idx+len(target):]
+    print(type(output_text))
+
+    # 文章が途中で切れた場合、切れた部分を削除
+    output_text = cut_sentence(output_text)
     
     total_time_end = time.perf_counter()
     total_time = total_time_end - total_time_start
