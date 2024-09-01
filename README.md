@@ -46,10 +46,12 @@ $ cd VLM
 
 # 環境構築
 $ conda create -n llava_jp python=3.11
+$ conda activate llava_jp
 $ pip install accelerate==0.33.0
 $ pip install transformers==4.44.2
 $ pip install open-clip-torch==2.26.1
 $ pip install einops==0.8.0
+$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 ```
 ---
