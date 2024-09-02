@@ -22,13 +22,10 @@ def ArgParser():
     parser.add_argument("-i", "--image", type=str, default="", help="image file")
     parser.add_argument("-p", "--prompt", type=str, default="", help="prompt")
     parser.add_argument("-t", "--type", type=str, default="v1", help="type")
-    parser.add_argument("--max_time", type=int, default="120", help="max_time")
-    parser.add_argument("--max_sentence_len", type=int, default="128", help="max_sentence_len")
     return parser.parse_args() 
 
 def cut_sentence(input):
-    if '。' in input:
-        input = input[:input.rfind('。')+1]
+    input = input[:input.rfind('。')+1]
     # print(input)
     return input
 
@@ -45,10 +42,6 @@ def main(args):
         image_url = "https://huggingface.co/rinna/bilingual-gpt-neox-4b-minigpt4/resolve/main/sample.jpg"
         image = Image.open(requests.get(image_url, stream=True).raw).convert('RGB')
     
-
-    max_time = args.max_time
-    max_sentence_len = args.max_sentence_len
-
     total_time_start = time.perf_counter()
     # parser_hf = transformers.HfArgumentParser(
     #     (ModelArguments, DataArguments, TrainingArguments))
@@ -124,13 +117,13 @@ def main(args):
             do_sample=True,
             temperature=0.1,
             top_p=1.0,
-            max_new_tokens=max_sentence_len,
+            max_new_tokens=64,
             streamer=streamer,
             use_cache=False,
             pad_token_id=4,
             length_penalty=10.0,
             early_stopping=True,
-            max_time=max_time,
+            max_time=60,
         )
     predict_time_end = time.perf_counter()
     predict_time = predict_time_end-predict_time_start
@@ -142,6 +135,7 @@ def main(args):
     idx = output.find(target)
     input_text = output[:idx]
     output_text = output[idx+len(target):]
+    print(type(output_text))
 
     # 文章が途中で切れた場合、切れた部分を削除
     output_text = cut_sentence(output_text)

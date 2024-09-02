@@ -19,7 +19,7 @@ https://github.com/tosiyuki/LLaVA-JP
 ### Software
 |  ライブラリ  |  バージョン  |
 | ---- | ---- |
-|  Python  |  3.11 |
+|  Python  |  3.10 |
 |  CUDA  |  12.1.105 |
 |  cudnn  |  9.1.0.70 |
 
@@ -31,7 +31,6 @@ https://github.com/tosiyuki/LLaVA-JP
 |  GPU   |  8GB [RTX2070SUPER]  |
 
 ---
-
 
 ## Setting
 ### Install
@@ -45,13 +44,23 @@ $ git clone https://github.com/open-br/VLM
 $ cd VLM
 
 # 環境構築
-$ conda create -n llava_jp python=3.11
+$ conda create -n llava_jp python=3.10
 $ conda activate llava_jp
 $ pip install accelerate==0.33.0
 $ pip install transformers==4.44.2
 $ pip install open-clip-torch==2.26.1
 $ pip install einops==0.8.0
 $ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+## 音声合成を動かす場合は追加でインストール
+$ pip install espnet==202402
+$ pip install espnet_model_zoo==0.1.7
+$ pip install sounddevice==0.5.0
+$ pip install scipy==1.10.1
+## windowsだとcmakeのインストールが必要
+# https://zenn.dev/tez3998/scraps/92e703a3a42189
+# 上記サイトを参考にして、以下のコマンドが正常に終了したら成功
+$ pip install pyopenjtalk==0.3.4
 
 ```
 ---
@@ -68,6 +77,12 @@ $ python demo_llava.py -g -p この画像に写っている人の特徴を説明
 $ python demo_llava.py -g -p この画像には人が何人いますか？ -i imgs/2men.jpg
 $ python demo_llava.py -g -p このロボットの色は？ -i imgs/body.jpg
 
+# 音声合成
+## 以下からmodel.zipをダウンロード
+https://drive.google.com/file/d/1vzBidTLDD0uhZl8F6oFseM9eFj05C8J9/view?usp=sharing
+## 解凍して本リポジトリ直下に配置
+$ cd example
+$ python tts.py sample.txt 
 ```
 ---
 
