@@ -12,6 +12,7 @@ from llava.train.dataset import tokenizer_image_token
 import time
 import argparse
 from threading import Thread
+import cv2
 
 import warnings
 warnings.simplefilter('ignore')
@@ -21,11 +22,36 @@ def ArgParser():
     parser = argparse.ArgumentParser(description="description of the program")
     parser.add_argument("-g", "--gpu", action="store_true", default=False, help="enable CPU")
     parser.add_argument("-i", "--image", type=str, default="", help="image file")
+    parser.add_argument("-c", "--camera", action="store_true", default=False, help="camera")
+    parser.add_argument("--camera_id", type=int, default="0", help="camera id")
     parser.add_argument("-p", "--prompt", type=str, default="", help="prompt")
     parser.add_argument("-t", "--type", type=str, default="v1", help="type")
     parser.add_argument("--max_time", type=int, default="120", help="max_time")
     parser.add_argument("--max_sentence_len", type=int, default="128", help="max_sentence_len")
+    parser.add_argument("--detail", action="store_true", default=False, help="output detail")
     return parser.parse_args() 
+
+def capture(camera_id):
+    cap = cv2.VideoCapture(camera_id)
+
+    # キャプチャがオープンしている間続ける
+    while(cap.isOpened()):
+        # フレームを読み込む
+        ret, frame = cap.read()
+        if ret == True:
+            # フレームを表示
+            cv2.imshow('Webcam Live', frame)
+
+            # 'q'キーが押されたらループから抜ける
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            break
+
+    # キャプチャをリリースし、ウィンドウを閉じる
+    cap.release()
+    cv2.destroyAllWindows()
+    return frame
 
 def cut_sentence(input):
     if '。' in input:
@@ -39,12 +65,15 @@ def main(args):
     else:
         prompt = "猫の隣には何がありますか？"
     # image pre-process
-    if args.image != "":
-        # 手元の画像
-        image = Image.open(args.image).convert('RGB')
+    if args.camera:
+        image = capture(args.camera_id)
     else:
-        image_url = "https://huggingface.co/rinna/bilingual-gpt-neox-4b-minigpt4/resolve/main/sample.jpg"
-        image = Image.open(requests.get(image_url, stream=True).raw).convert('RGB')
+        if args.image != "":
+            # 手元の画像
+            image = Image.open(args.image).convert('RGB')
+        else:
+            image_url = "https://huggingface.co/rinna/bilingual-gpt-neox-4b-minigpt4/resolve/main/sample.jpg"
+            image = Image.open(requests.get(image_url, stream=True).raw).convert('RGB')
     
 
     max_time = args.max_time
@@ -114,7 +143,7 @@ def main(args):
     input_ids = input_ids[:, :-1] # </sep>がinputの最後に入るので削除する
     stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
     keywords = [stop_str]
-    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=20.0)
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=100.0)
     # predict
     predict_time_start = time.perf_counter()
     config = dict(
@@ -125,7 +154,7 @@ def main(args):
         top_p=1.0,
         max_new_tokens=max_sentence_len,
         streamer=streamer,
-        use_cache=False,
+        use_cache=True,
         pad_token_id=4,
         length_penalty=10.0,
         early_stopping=True,
@@ -134,34 +163,37 @@ def main(args):
     )
     thread = Thread(target=model.generate, kwargs=config)
     thread.start()
+    print("---推論開始---")
     generated_text = ""
     
     # ストリーミング処理
+    text=buffer = ""
     for token in streamer:
         if token != '':
             # print(token)
+            print(token, end="", flush=True)
             generated_text += token
-    # print(generated_text)
+        # if len(text_buffer)
+    
+    print("\n---推論終了---")
     predict_time_end = time.perf_counter()
     predict_time = predict_time_end-predict_time_start
 
-    output = generated_text
-    target = "システム: "
-    idx = output.find(target)
-    input_text = output[:idx]
-    output_text = output[idx+len(target):]
-
     # 文章が途中で切れた場合、切れた部分を削除
-    output_text = cut_sentence(output_text)
+    output_text = cut_sentence(generated_text)
+
+    print('最終出力：', output_text)
+    
     
     total_time_end = time.perf_counter()
     total_time = total_time_end - total_time_start
-    print('---詳細---')
-    print('入力：', input_text)
-    print('出力：', output_text)
-    print('トークン数:{:d}'.format(len(output_text)))
-    print('推論速度:{:.2f}[token/s]'.format(len(output_text)/predict_time))
-    print('全体処理時間:{:.2f}[s]'.format(total_time))
+    if args.detail:
+        print('---詳細---')
+        print('入力：', prompt)
+        print('出力：', output_text)
+        print('トークン数:{:d}'.format(len(output_text)))
+        print('推論速度:{:.2f}[token/s]'.format(len(output_text)/predict_time))
+        print('全体処理時間:{:.2f}[s]'.format(total_time))
     
 if __name__ == "__main__":
     args = ArgParser()
